@@ -42,7 +42,7 @@ class TemplateMatcher:
             # detect edges in the resized, grayscale image and apply template
             # matching to find the template in the image
             edged = cv2.Canny(resized, 50, 200)
-            result = cv2.matchTemplate(edged, template, cv2.TM_CCOEFF_NORMED)
+            result = cv2.matchTemplate(edged, template, cv2.TM_CCOEFF)
             (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
             # check to see if the iteration should be visualized
             if visualize:
@@ -74,14 +74,13 @@ class TemplateMatcher:
             print('match success.')
         else:
             print('match failure.')
-
         
         return found
 
     
 if __name__=='__main__':
     test_img_path = 'test1.jpg_plate.jpg' # 沪EWM957
-    test_template_path = 'templates/E.png'
+    test_template_path = 'templates/6.png'
     
     test_img = cv2.imread(test_img_path)
     test_template = cv2.imread(test_template_path)

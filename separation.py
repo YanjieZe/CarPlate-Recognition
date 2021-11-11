@@ -2,9 +2,11 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import utils 
-from localization import PlateLocation
+from localization import PlateLocation, preprocess
+import copy
 
-def get_area_img(origin_img, location):
+
+def get_area_img(origin_img, location, use_shear=True):
     """
     Clip the origin img and get the plate
     """
@@ -30,16 +32,57 @@ def get_area_img(origin_img, location):
     
     
     # shear
-    if reverse_shear:
-        ShearMatrix = np.array([[1, -0.3,0],
-                            [0, 1,0]])
-    else:
-        ShearMatrix = np.array([[1, 0.3,0],
+    if use_shear:
+        if reverse_shear:
+            ShearMatrix = np.array([[1, -0.3,0],
                                 [0, 1,0]])
-    img_sheared = cv2.warpAffine(img_cliped, ShearMatrix, (img_cliped.shape[1]+10, img_cliped.shape[0]+10))
+        else:
+            ShearMatrix = np.array([[1, 0.4,0],
+                                    [0, 1,0]])
+        img_sheared = cv2.warpAffine(img_cliped, ShearMatrix, (img_cliped.shape[1]+10, img_cliped.shape[0]+10))
+        return img_sheared
+    else:
+        return img_cliped
 
-    # utils.show_img(img_sheared)
-    return img_sheared
+
+def postprocess(img, plate_color):
+    """
+    Process clipped img
+    """
+    origin_img = copy.deepcopy(img)
+    img = preprocess(img, plate_color)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(21,5))
+    img = cv2.dilate(img, kernel, 5)
+    
+    contours, heriachy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    max_area = None
+    max_cnt = None
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if max_area == None:
+            max_area = area
+            max_cnt = cnt
+        else:
+            if(area>max_area):
+                max_area = area
+                max_cnt = cnt
+            
+    rect = cv2.boundingRect(max_cnt)
+
+    x_leftup = rect[0]
+    y_leftup = rect[1]
+    width = rect[2]
+    height = rect[3]
+
+    img_cliped = origin_img[y_leftup:(y_leftup+height), x_leftup:(x_leftup+width)]
+    
+    # utils.show_img(origin_img)
+  
+    return img_cliped
+    
+
+
 
 def get_plate_character(plate_img):
     # 将图像灰度化
@@ -90,6 +133,6 @@ if __name__=='__main__':
     img = cv2.imread(img_path)
     location = PlateLocation(img, 'blue')
     img_sheared = get_area_img(origin_img=img, location=location)
-
-    get_plate_character(img_sheared)
+    utils.show_img(img_sheared)
+    # get_plate_character(img_sheared)
     
