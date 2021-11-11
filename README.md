@@ -1,8 +1,14 @@
 # Car Plate Identity
+1. Separation with Color Prior Knowledge
+2. Multi-scale Template Matching
 
-`localization.py` 获取车牌位置。
+# Usage
 
-`separate
+```shell
+python main.py
+```
+
+
 
 # Reference
 1. https://blog.csdn.net/GK_2014/article/details/84779166
