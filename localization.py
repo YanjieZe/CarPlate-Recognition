@@ -1,7 +1,14 @@
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 WINDOW_NAME = "ZYJ's test"
 
+debug = False
+
+def show_img(img):
+    cv2.namedWindow("img", cv2.WINDOW_NORMAL) 
+    cv2.imshow("img", img)
+    cv2.waitKey(0)
 
 def draw_box(origin_img, location, img_name):
     # 可视化矩形
@@ -10,12 +17,15 @@ def draw_box(origin_img, location, img_name):
     for k in range(4):
         n1,n2 = k%4,(k+1)%4
         cv2.line(origin_img,(box[n1][0],box[n1][1]),(box[n2][0],box[n2][1]),(255, 0, 255),5)
-
+    if debug:
+        show_img(origin_img)
     cv2.imwrite('%s.jpg'%img_name, origin_img)
 
 
-def preprocess(orig_img):
-    
+def preprocess(orig_img, plate_color):
+    if plate_color not in ['blue', 'green']:
+        raise Exception('Car Plate Color Error.')
+
     gray_img = cv2.cvtColor(orig_img, cv2.COLOR_BGR2GRAY)
 
     blur_img = cv2.blur(gray_img, (3, 3))
@@ -25,22 +35,36 @@ def preprocess(orig_img):
 
     hsv_img = cv2.cvtColor(orig_img, cv2.COLOR_BGR2HSV)
 
+
     # use HSV to divide color
     h, s, v = hsv_img[:, :, 0], hsv_img[:, :, 1], hsv_img[:, :, 2]
-    # 黄色色调区间[26，34],蓝色色调区间:[100,124]
+    
+    
+    # 为绿色车牌设计的mask
+    hsv_mask_for_img_green = (h > 60) & (h<70) & (s<90) & (v>150)
 
-    blue_img = (((h > 26) & (h < 34)) | ((h > 100) & (h < 124))) & (s > 70) & (v > 70)
-    blue_img = blue_img.astype('float32')
+    # 为蓝色车牌设计的mask
+    hsv_mask_for_img_blue = (h>90) &  (h<120) & (s>200) & (s<270) & (v>120) & (v<180)
 
-    mix_img = np.multiply(sobel_img, blue_img)
+    if plate_color=='blue':
+        hsv_mask = hsv_mask_for_img_blue
+    elif plate_color=='green':
+        hsv_mask = hsv_mask_for_img_green
+
+    hsv_mask = hsv_mask.astype(np.float64)
+    
+    mix_img = np.multiply(sobel_img, hsv_mask)
 
     mix_img = mix_img.astype(np.uint8)
-
+    # show_img(mix_img)
     _, binary_img = cv2.threshold(mix_img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(21,5))
     close_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(21,5))
+    close_img = cv2.dilate(close_img, kernel, 5)
 
     return close_img
 
@@ -110,7 +134,11 @@ def bbox_compression(rectangle_list):
                 new_rect = cv2.minAreaRect(np.array(point_list))
                 new_rectangle_list.append(new_rect)
 
-    # print(len(new_rectangle_list))   
+    # 如果new-rectangle-list为空，直接返回 rectangle list
+    if new_rectangle_list == []:
+       return rectangle_list
+
+    
     return new_rectangle_list
 
     
@@ -140,7 +168,7 @@ def get_plate_location(orig_img, img_processed):
             possible_rec_list.append(rotate_rect)
 
         # 进行整合
-    
+
     # compress
     possible_rec_list = bbox_compression(possible_rec_list)
 
@@ -163,22 +191,26 @@ def get_plate_location(orig_img, img_processed):
 
     return max_rec
 
-def PlateLocation(img):
+def PlateLocation(img, plate_color):
     """
-    Input: one img
+    Input: one img and the color of the plate
 
     Return: location: ((x, y), (width, height), angle)
     """
-    img_processed = preprocess(img)
+    img_processed = preprocess(img, plate_color)
+    if debug:
+        show_img(img_processed)
+
     location = get_plate_location(img, img_processed)
     return location
 
 if __name__=='__main__':
-    for img_path in ["test1.jpg", "test2.jpg", "test3.jpg"]:
+    # for img_path in ["test3.jpg"]:
+    for img_path,color in [("test1.jpg", "blue"), ("test2.jpg","green"), ("test3.jpg","blue")]:
         print('--------- test %s -------'%img_path)
         img = cv2.imread(img_path)
 
-        location  = PlateLocation(img)
+        location  = PlateLocation(img, plate_color=color)
         draw_box(img, location, "%s_result"%img_path)
 
         print('The location of the plate:')
