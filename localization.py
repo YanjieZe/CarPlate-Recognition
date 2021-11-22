@@ -1,6 +1,10 @@
+from operator import truediv
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import utils as my_utils
+from numpy.lib import utils
+
 WINDOW_NAME = "ZYJ's test"
 
 debug = False
@@ -23,7 +27,7 @@ def draw_box(origin_img, location, img_name):
 
 
 def preprocess(orig_img, plate_color):
-    if plate_color not in ['blue', 'green']:
+    if plate_color not in ['blue', 'green', 'deep blue', 'dark blue']:
         raise Exception('Car Plate Color Error.')
 
     gray_img = cv2.cvtColor(orig_img, cv2.COLOR_BGR2GRAY)
@@ -46,11 +50,19 @@ def preprocess(orig_img, plate_color):
     # 为蓝色车牌设计的mask
     hsv_mask_for_img_blue = (h>90) &  (h<120) & (s>200) & (s<270) & (v>120) & (v<180)
 
+    # 为深蓝色设计的mask
+    hsv_mask_for_img_deep_blue = (h>100) &  (h<120) & (s>150) & (s<200) & (v>160) & (v<220)
+    hsv_mask_for_img_dark_blue = (h>90) &  (h<150) & (s>200) & (s<270)  & (v>140) & (v<220)
+    
+    
     if plate_color=='blue':
         hsv_mask = hsv_mask_for_img_blue
     elif plate_color=='green':
         hsv_mask = hsv_mask_for_img_green
-
+    elif plate_color=='deep blue':
+        hsv_mask = hsv_mask_for_img_deep_blue
+    elif plate_color=='dark blue':
+        hsv_mask = hsv_mask_for_img_dark_blue
     hsv_mask = hsv_mask.astype(np.float64)
     
     mix_img = np.multiply(sobel_img, hsv_mask)
@@ -151,17 +163,14 @@ def get_plate_location(orig_img, img_processed):
     contours, heriachy = cv2.findContours(img_processed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     img_for_draw = orig_img.copy()
+    if debug:
+        cv2.drawContours(img_for_draw, contours, -1, [255,255,0], 5)
+        my_utils.show_img(img_for_draw)
 
     possible_rec_list = [] # 存储可能的矩形框
 
     for i, contour in enumerate(contours):
         
-        # draw contour
-        # cv2.drawContours(img_for_draw, contours, i, (255, 0, 255), 5)
-        
-        # get bounding rectangle
-        # minAreaRect返回最小外接矩形的：中心坐标(x,y)，宽高(w,h)，旋转角度(theta)
-        # 注意，theta是度数，不是弧度
         rotate_rect = cv2.minAreaRect(contour)
         if rectangle_is_plate(rotate_rect):
             # 把可能的矩形框存储起来
@@ -198,6 +207,7 @@ def PlateLocation(img, plate_color):
     Return: location: ((x, y), (width, height), angle)
     """
     img_processed = preprocess(img, plate_color)
+    # debug = True
     if debug:
         show_img(img_processed)
 
@@ -205,8 +215,8 @@ def PlateLocation(img, plate_color):
     return location
 
 if __name__=='__main__':
-    # for img_path in ["test3.jpg"]:
-    for img_path,color in [("test1.jpg", "blue"), ("test2.jpg","green"), ("test3.jpg","blue")]:
+    for img_path in ["test1.jpg"]:
+    # for img_path,color in [("test1.jpg", "blue"), ("test2.jpg","green"), ("test3.jpg","blue")]:
         print('--------- test %s -------'%img_path)
         img = cv2.imread(img_path)
 

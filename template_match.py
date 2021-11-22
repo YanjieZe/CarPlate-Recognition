@@ -45,26 +45,20 @@ class TemplateMatcher:
 
         # loop over the scales of the image
         for scale in np.linspace(scale_low, scale_high, scale_num)[::-1]:
-            # resize the image according to the scale, and keep track
-            # of the ratio of the resizing
+
             resized = cv2.resize(gray, ( int(gray.shape[1]*scale),int(gray.shape[0] * scale) ) )
-            # utils.show_img(resized)
             r = gray.shape[1] / float(resized.shape[1])
-            # if the resized image is smaller than the template, then break
-            # from the loop
             if resized.shape[0] < tH or resized.shape[1] < tW:
-                print('resize shape too small, break')
+                # print('resize shape too small, break')
                 break
             
-            # detect edges in the resized, grayscale image and apply template
-            # matching to find the template in the image
             edged = cv2.Canny(resized, 50, 200)
             
             result = cv2.matchTemplate(edged, template, cv2.TM_CCOEFF_NORMED)
             (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
-            # check to see if the iteration should be visualized
+
             if visualize:
-                # draw a bounding box around the detected region
+
                 clone = np.dstack([edged, edged, edged])
                 cv2.rectangle(clone, (maxLoc[0], maxLoc[1]),
                     (maxLoc[0] + tW, maxLoc[1] + tH), (0, 0, 255), 2)
@@ -125,7 +119,7 @@ class TemplateMatcher:
 
     def loop_match(self, plate_img, scale_speed, iou_threshold):
 
-        debug = True
+        debug = False
 
         template_dataset = self.template_dataset()
         result_template_list = []
@@ -169,14 +163,14 @@ class TemplateMatcher:
 
         if debug:
             utils.show_img(img)
-            utils.save_img('report_img/without_nms.png', img)
+            # utils.save_img('report_img/without_nms.png', img)
 
             for box in result_template_list:
                 label, (startX, startY, endX, endY), maxVal = box
                 cv2.rectangle(img_withnms, (startX, startY), (endX, endY), (0, 0, 255), 2)
             
             utils.show_img(img_withnms)
-            utils.save_img('report_img/with_nms.png', img_withnms)
+            # utils.save_img('report_img/with_nms.png', img_withnms)
             # print(result_template_list)
         
         output = []
@@ -246,8 +240,8 @@ if __name__=='__main__':
 
     threshold = 0.01
 
-    # test_img_path = 'test1.jpg_plate.jpg' # 沪EWM957
-    test_img_path = 'test2.jpg_plate.jpg' # 沪ADE6598
+    test_img_path = 'test1.jpg_plate.jpg' # 沪EWM957
+    # test_img_path = 'test2.jpg_plate.jpg' # 沪ADE6598
     # test_img_path = 'test3.jpg_plate.jpg' # 皖SJ6M07
 
     # test_template_path = 'templates/D.png'
@@ -259,6 +253,6 @@ if __name__=='__main__':
     matcher = TemplateMatcher(threshold=threshold, visualize=False)
     # result = matcher.match(test_img, test_template, 0.1)
 
-    plate_number = matcher.loop_match(test_img, scale_speed=0.3, iou_threshold=0.1)
+    plate_number = matcher.loop_match(test_img, scale_speed=0.3, iou_threshold=0.05)
     # print(plate_number)
 
