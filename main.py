@@ -8,8 +8,8 @@ from template_match import TemplateMatcher
 
 if __name__=='__main__':
     # for img_path,color in [("test2.jpg","green")]:
-    params =  [("test1.jpg", "blue", 0.1, 0.1), ("test2.jpg","green", 0.1, 0.1), ("test3.jpg","blue", 0.1, 0.1)]
-    for img_path,color,threshold,scale_speed in params:
+    params =  [("test1.jpg", "blue", 0.1, 0.1, 0.1), ("test2.jpg","green", 0.1, 0.1, 0.1), ("test3.jpg","blue", 0.1, 0.1, 0.1)]
+    for img_path,color,match_threshold,scale_speed, iou_thres in params:
         
         print('--------- test %s -------'%img_path)
         img = cv2.imread(img_path)
@@ -19,9 +19,9 @@ if __name__=='__main__':
         post_img = postprocess(sheared_img, color)
         
 
-        matcher = TemplateMatcher(threshold=threshold)
+        matcher = TemplateMatcher(threshold=match_threshold)
         # result = matcher.match(test_img, test_template)
-        plate_number = matcher.loop_match(post_img, scale_speed)
+        plate_number = matcher.loop_match(post_img, scale_speed, iou_thres)
         print(plate_number)
 
 
